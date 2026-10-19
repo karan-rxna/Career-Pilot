@@ -5,3 +5,12 @@
 # IDE metadata
 .idea/
 *.iml
+
+# Local environment files (may hold database passwords and demo credentials)
+.env
+.env.local
+.env.*.local
+
+# Python tooling (docs/presentation scripts)
+__pycache__/
+*.pyc
