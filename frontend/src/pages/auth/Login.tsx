@@ -19,11 +19,14 @@ function loginError(err: unknown): string {
  * Optional demo credentials, prefilled so signing in during a demo is one click.
  *
  * They come from `VITE_DEMO_EMAIL` / `VITE_DEMO_PASSWORD` in a gitignored `.env.local` rather than
- * from source, so no password ever enters the repository. Unset in CI and production, which
- * simply leaves both fields empty.
+ * from source, so no password ever enters the repository.
+ *
+ * The `import.meta.env.DEV` guard is load-bearing rather than decorative: Vite reads `.env.local`
+ * for `vite build` as well as `vite dev`, so without it a local build would inline the password
+ * into the production bundle. `DEV` is replaced by `false` at build time and the branch is dropped.
  */
-const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? "";
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? "";
+const DEMO_EMAIL = import.meta.env.DEV ? (import.meta.env.VITE_DEMO_EMAIL ?? "") : "";
+const DEMO_PASSWORD = import.meta.env.DEV ? (import.meta.env.VITE_DEMO_PASSWORD ?? "") : "";
 
 export default function Login() {
   const navigate = useNavigate();
