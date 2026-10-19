@@ -95,7 +95,7 @@ public class AuthController {
         return ResponseCookie.from(REFRESH_COOKIE, value)
                 .httpOnly(true)
                 .secure(authProperties.cookieSecure())
-                .sameSite("Lax")
+                .sameSite(authProperties.cookieSameSite())
                 .path(REFRESH_PATH)
                 .maxAge(jwtProperties.refreshTokenTtl())
                 .build();
@@ -105,7 +105,7 @@ public class AuthController {
         return ResponseCookie.from(REFRESH_COOKIE, "")
                 .httpOnly(true)
                 .secure(authProperties.cookieSecure())
-                .sameSite("Lax")
+                .sameSite(authProperties.cookieSameSite())
                 .path(REFRESH_PATH)
                 .maxAge(Duration.ZERO)
                 .build();

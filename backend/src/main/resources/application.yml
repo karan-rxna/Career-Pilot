@@ -54,6 +54,9 @@ careerpilot:
     refresh-token-ttl: P30D
   auth:
     cookie-secure: ${COOKIE_SECURE:false}
+    # Lax works for same-site local dev. A frontend on its own domain (Vercel) makes the
+    # refresh call cross-site — set COOKIE_SAME_SITE=None there, together with COOKIE_SECURE=true.
+    cookie-same-site: ${COOKIE_SAME_SITE:Lax}
     reset-token-ttl: PT1H
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
