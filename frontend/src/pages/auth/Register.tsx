@@ -2,12 +2,17 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, GraduationCap, Loader2, Lock, Mail, User } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthShell, OAuthButtons } from "./AuthLayout";
+import { ApiError } from "../../lib/api";
+import { useAuth } from "../../store/useAuth";
 import { cn } from "../../lib/utils";
+import { AuthShell, FormError, OAuthButtons } from "./AuthLayout";
+
+/** The backend requires 8+ characters, so the meter and the server agree. */
+const MIN_PASSWORD = 8;
 
 function strengthOf(pw: string): { score: number; label: string } {
   let score = 0;
-  if (pw.length >= 8) score++;
+  if (pw.length >= MIN_PASSWORD) score++;
   if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
   if (/\d/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
@@ -15,19 +20,57 @@ function strengthOf(pw: string): { score: number; label: string } {
   return { score, label: labels[score] };
 }
 
+function registerError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 409) return "An account with that email already exists. Try logging in instead.";
+    if (err.isOffline) return err.message;
+    return err.firstFieldError ?? err.message;
+  }
+  return "Something went wrong on our side. Please try again.";
+}
+
 export default function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
+
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [college, setCollege] = useState("");
   const [pw, setPw] = useState("");
   const strength = useMemo(() => strengthOf(pw), [pw]);
-  const inputCls =
-    "w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-brand-500/50 focus:bg-white/[0.06] focus:outline-none";
 
-  function submit(e: FormEvent) {
+  const inputCls =
+    "w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-brand-500/50 focus:bg-white/[0.06] focus:outline-none disabled:opacity-60";
+
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (loading) return;
+
+    if (pw.length < MIN_PASSWORD) {
+      setError(`Password must be at least ${MIN_PASSWORD} characters.`);
+      return;
+    }
+
+    setError(null);
     setLoading(true);
-    setTimeout(() => navigate("/app/dashboard"), 1000);
+    try {
+      await register({
+        name: `${firstName} ${lastName}`.trim(),
+        email,
+        password: pw,
+        // College is optional on both sides; omit it entirely when blank so the
+        // server stores null rather than an empty string.
+        ...(college.trim() ? { college: college.trim() } : {}),
+      });
+      navigate("/app/dashboard", { replace: true });
+    } catch (err) {
+      setError(registerError(err));
+      setLoading(false);
+    }
   }
 
   return (
@@ -44,38 +87,75 @@ export default function Register() {
       }
     >
       <OAuthButtons />
+      <FormError message={error} />
       <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="relative">
             <User className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
             <input
+              name="firstName"
               required
+              autoComplete="given-name"
+              disabled={loading}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               placeholder="First name"
               className={cn(inputCls, "pl-10")}
             />
           </div>
           <div className="relative">
             <User className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-            <input required placeholder="Last name" className={cn(inputCls, "pl-10")} />
+            <input
+              name="lastName"
+              required
+              autoComplete="family-name"
+              disabled={loading}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Last name"
+              className={cn(inputCls, "pl-10")}
+            />
           </div>
         </div>
         <div className="relative">
           <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-          <input required type="email" placeholder="College email" className={inputCls} />
+          <input
+            name="email"
+            required
+            type="email"
+            autoComplete="email"
+            disabled={loading}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="College email"
+            className={inputCls}
+          />
         </div>
         <div className="relative">
           <GraduationCap className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-          <input placeholder="College name (optional)" className={inputCls} />
+          <input
+            name="college"
+            autoComplete="organization"
+            disabled={loading}
+            value={college}
+            onChange={(e) => setCollege(e.target.value)}
+            placeholder="College name (optional)"
+            className={inputCls}
+          />
         </div>
         <div>
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
             <input
+              name="password"
               required
               type={showPw ? "text" : "password"}
-              placeholder="Create a password"
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD}
+              disabled={loading}
               value={pw}
               onChange={(e) => setPw(e.target.value)}
+              placeholder="Create a password"
               className={inputCls}
             />
             <button

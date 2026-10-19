@@ -19,9 +19,10 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { user } from "../data/mock";
+import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "../lib/utils";
+import { useAuth } from "../store/useAuth";
+import { Logo, Tagline } from "./Logo";
 import { EASE } from "./motion";
 
 interface NavItem {
@@ -58,12 +59,15 @@ const sections: { heading: string; items: NavItem[] }[] = [
   },
 ];
 
-function Avatar({ className }: { className?: string }) {
-  const initials = user.name
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("");
+function Avatar({ className, name, hue }: { className?: string; name: string; hue: number }) {
+  const initials =
+    name
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "P";
   return (
     <div
       className={cn(
@@ -71,28 +75,10 @@ function Avatar({ className }: { className?: string }) {
         className
       )}
       style={{
-        background: `linear-gradient(135deg, hsl(${user.avatarHue} 85% 60%), hsl(${user.avatarHue + 45} 85% 45%))`,
+        background: `linear-gradient(135deg, hsl(${hue} 85% 60%), hsl(${hue + 45} 85% 45%))`,
       }}
     >
       {initials}
-    </div>
-  );
-}
-
-function Logo() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 shadow-[0_8px_24px_-8px_rgba(138,99,255,0.9)]">
-        <Rocket className="size-4.5 text-white" strokeWidth={2.4} />
-      </div>
-      <div className="leading-tight">
-        <p className="font-display text-[15px] font-bold tracking-tight text-white">
-          Career<span className="text-gradient">Pilot</span>
-        </p>
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">
-          Placement OS
-        </p>
-      </div>
     </div>
   );
 }
@@ -152,7 +138,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SidebarFooter() {
-  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const name = user?.name ?? "Pilot";
   return (
     <div className="space-y-3 border-t border-white/6 p-3">
       <div className="border-glow relative overflow-hidden rounded-2xl p-3.5">
@@ -179,14 +166,23 @@ function SidebarFooter() {
           )
         }
       >
-        <Avatar className="size-9" />
+        <Avatar className="size-9" name={name} hue={user?.avatarHue ?? 258} />
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-[13px] font-semibold text-zinc-100">{user.name}</p>
-          <p className="truncate text-[11px] text-zinc-500">{user.email}</p>
+          <p className="truncate text-[13px] font-semibold text-zinc-100">{name}</p>
+          <p className="truncate text-[11px] text-zinc-500">{user?.email ?? ""}</p>
         </div>
         <button
+          type="button"
           aria-label="Sign out"
-          onClick={() => navigate("/auth/login")}
+          title="Sign out"
+          onClick={(event) => {
+            // This button lives inside the profile NavLink, so the click must not
+            // also navigate there on the way out. RequireAuth handles the redirect
+            // once the session flips to anonymous.
+            event.preventDefault();
+            event.stopPropagation();
+            void logout();
+          }}
           className="rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-white/8 hover:text-rose-300"
         >
           <LogOut className="size-4" />
@@ -199,8 +195,9 @@ function SidebarFooter() {
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
-      <div className="flex items-center justify-between px-5 pb-2 pt-5">
+      <div className="px-5 pb-1 pt-5">
         <Logo />
+        <Tagline className="ml-0.5 mt-2.5 text-[8px] tracking-[0.08em]" />
       </div>
       <NavList onNavigate={onNavigate} />
       <SidebarFooter />
@@ -242,6 +239,7 @@ function CockpitClock() {
   );
 }
 function Topbar({ onMenu }: { onMenu: () => void }) {
+  const { user } = useAuth();
   return (
     <header className="sticky top-0 z-30 border-b border-white/6 bg-ink-950/75 backdrop-blur-xl">
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
@@ -278,7 +276,11 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
             <span className="absolute right-2 top-2 size-1.5 rounded-full bg-accent-400 shadow-[0_0_6px_rgba(69,230,251,1)]" />
           </button>
           <button aria-label="Profile" className="transition-transform hover:scale-105">
-            <Avatar className="size-9 ring-2 ring-white/10" />
+            <Avatar
+              className="size-9 ring-2 ring-white/10"
+              name={user?.name ?? "Pilot"}
+              hue={user?.avatarHue ?? 258}
+            />
           </button>
         </div>
       </div>
@@ -315,7 +317,7 @@ export default function AppShell() {
               transition={{ duration: 0.3, ease: EASE }}
             >
               <div className="flex items-center justify-between px-4 pt-4">
-                <Logo />
+                <Logo withTagline />
                 <button
                   aria-label="Close menu"
                   onClick={() => setDrawerOpen(false)}

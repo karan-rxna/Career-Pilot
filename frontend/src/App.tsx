@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import AppShell from "./components/AppShell";
+import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import Contests from "./pages/Contests";
 import Dashboard from "./pages/Dashboard";
 import DSA from "./pages/DSA";
@@ -29,10 +30,38 @@ export default function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
-        <Route path="/auth/login" element={<Login />} />
-        <Route path="/auth/register" element={<Register />} />
-        <Route path="/auth/forgot" element={<Forgot />} />
-        <Route path="/app" element={<AppShell />}>
+        <Route
+          path="/auth/login"
+          element={
+            <RequireGuest>
+              <Login />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/auth/register"
+          element={
+            <RequireGuest>
+              <Register />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/auth/forgot"
+          element={
+            <RequireGuest>
+              <Forgot />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/app"
+          element={
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
+          }
+        >
           <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="dsa" element={<DSA />} />

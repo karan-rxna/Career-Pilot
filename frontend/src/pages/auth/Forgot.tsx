@@ -2,20 +2,37 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Loader2, Mail, MailCheck } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { AuthShell } from "./AuthLayout";
+import { ApiError, authApi } from "../../lib/api";
+import { AuthShell, FormError } from "./AuthLayout";
+
+function forgotError(err: unknown): string {
+  if (err instanceof ApiError) {
+    return err.isOffline ? err.message : (err.firstFieldError ?? err.message);
+  }
+  return "Something went wrong on our side. Please try again.";
+}
 
 export default function Forgot() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (sending) return;
+    setError(null);
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
+    try {
+      // The API answers 204 whether or not the email exists, so this screen
+      // never reveals which addresses have accounts.
+      await authApi.forgot(email);
       setSent(true);
-    }, 1100);
+    } catch (err) {
+      setError(forgotError(err));
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -49,9 +66,15 @@ export default function Forgot() {
             </motion.div>
             <h3 className="font-display text-lg font-bold text-white">Check your inbox</h3>
             <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-              Reset link sent to <span className="font-semibold text-zinc-200">{email}</span>. It
-              expires in 30 minutes.
+              If an account exists for <span className="font-semibold text-zinc-200">{email}</span>,
+              the reset link is on its way. It expires in 1 hour.
             </p>
+            {import.meta.env.DEV && (
+              <p className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] px-3.5 py-2.5 text-[11.5px] leading-relaxed text-zinc-500">
+                Dev only: no mail server is wired up yet — the token is logged by the API, in the
+                terminal running Spring Boot.
+              </p>
+            )}
             <Link
               to="/auth/login"
               className="mt-6 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-5 py-2.5 text-sm font-bold text-white transition-all hover:brightness-110"
@@ -66,19 +89,24 @@ export default function Forgot() {
             onSubmit={submit}
             className="space-y-4"
           >
+            <FormError message={error} />
             <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-zinc-300">
+              <label htmlFor="forgot-email" className="mb-1.5 block text-[13px] font-medium text-zinc-300">
                 Email address
               </label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
                 <input
+                  id="forgot-email"
+                  name="email"
                   type="email"
                   required
+                  autoComplete="email"
+                  disabled={sending}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@college.edu"
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-brand-500/50 focus:bg-white/[0.06] focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-brand-500/50 focus:bg-white/[0.06] focus:outline-none disabled:opacity-60"
                 />
               </div>
             </div>

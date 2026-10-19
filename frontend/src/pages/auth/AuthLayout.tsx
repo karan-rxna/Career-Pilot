@@ -1,8 +1,9 @@
-import { motion } from "framer-motion";
-import { BarChart3, BrainCircuit, Layers, Rocket, Trophy } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertCircle, BarChart3, BrainCircuit, Layers, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { GithubIcon } from "../../components/brands";
+import { Logo, Tagline } from "../../components/Logo";
 import { EASE } from "../../components/motion";
 
 const perks = [
@@ -10,19 +11,6 @@ const perks = [
   { icon: Layers, title: "One placement OS", text: "Contests, hackathons, goals, notes and roadmaps in a single workspace." },
   { icon: Trophy, title: "Built for the grind", text: "Streaks, weekly analytics and AI guidance keep you shipping daily." },
 ];
-
-function Logo({ light = true }: { light?: boolean }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 shadow-[0_8px_24px_-8px_rgba(138,99,255,0.9)]">
-        <Rocket className="size-4.5 text-white" strokeWidth={2.4} />
-      </div>
-      <p className="font-display text-lg font-bold tracking-tight text-white">
-        Career<span className={light ? "text-gradient" : "text-brand-300"}>Pilot</span>
-      </p>
-    </div>
-  );
-}
 
 export function AuthShell({
   title,
@@ -49,11 +37,19 @@ export function AuthShell({
         </Link>
 
         <div>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: EASE }}
+          >
+            <Tagline className="text-[10px] text-zinc-400" />
+          </motion.div>
+
           <motion.h1
             initial={{ opacity: 0, y: 26 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE, delay: 0.1 }}
-            className="font-display text-[2.6rem] font-bold leading-[1.1] tracking-tight text-white xl:text-[3.1rem]"
+            className="mt-6 font-display text-[2.6rem] font-bold leading-[1.1] tracking-tight text-white xl:text-[3.1rem]"
           >
             Your placement journey,
             <br />
@@ -135,18 +131,34 @@ export function OAuthButtons() {
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
-        <button className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-[13.5px] font-medium text-zinc-200 transition-all hover:border-white/20 hover:bg-white/[0.07] active:scale-[0.98]">
-          <svg className="size-4" viewBox="0 0 24 24">
+        <button
+          type="button"
+          disabled
+          title="Coming soon"
+          className="flex cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] py-2.5 text-[13.5px] font-medium text-zinc-500"
+        >
+          <svg className="size-4 opacity-60" viewBox="0 0 24 24">
             <path fill="#ea4335" d="M12 5.04c1.9 0 3.6.66 4.94 1.94l3.7-3.7C18.4 1.3 15.4 0 12 0 7.3 0 3.2 2.7 1.2 6.7l4.3 3.34C6.3 7.1 8.9 5.04 12 5.04z" />
             <path fill="#4285f4" d="M23.5 12.3c0-.8-.07-1.57-.2-2.3H12v4.35h6.45a5.2 5.2 0 0 1-2.26 3.41l3.86 3c2.26-2.1 3.45-5.17 3.45-8.46z" />
             <path fill="#fbbc04" d="M5.5 14.96a6.8 6.8 0 0 1 0-4.34L1.2 7.32a11.97 11.97 0 0 0 0 10.72l4.3-3.08z" />
             <path fill="#34a853" d="M12 24c3.24 0 5.95-1.08 7.94-2.91l-3.86-3c-1.07.72-2.44 1.15-4.08 1.15-3.1 0-5.7-2.06-6.63-4.82L1.2 18.06C3.2 22.06 7.3 24 12 24z" />
           </svg>
           Google
+          <span className="rounded-full bg-white/8 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-zinc-500">
+            soon
+          </span>
         </button>
-        <button className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-[13.5px] font-medium text-zinc-200 transition-all hover:border-white/20 hover:bg-white/[0.07] active:scale-[0.98]">
-          <GithubIcon className="size-4" />
+        <button
+          type="button"
+          disabled
+          title="Coming soon"
+          className="flex cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] py-2.5 text-[13.5px] font-medium text-zinc-500"
+        >
+          <GithubIcon className="size-4 opacity-60" />
           GitHub
+          <span className="rounded-full bg-white/8 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-zinc-500">
+            soon
+          </span>
         </button>
       </div>
       <div className="my-6 flex items-center gap-4">
@@ -157,5 +169,34 @@ export function OAuthButtons() {
         <div className="h-px flex-1 bg-white/8" />
       </div>
     </>
+  );
+}
+
+/**
+ * Inline failure banner for the auth forms. Renders nothing when there is no
+ * message, and collapses smoothly so the form does not jump.
+ */
+export function FormError({ message }: { message: string | null }) {
+  return (
+    <AnimatePresence initial={false}>
+      {message && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.22 }}
+          className="overflow-hidden"
+        >
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-rose-300" />
+            <p className="text-[12.5px] leading-relaxed text-rose-200">{message}</p>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -1,23 +1,60 @@
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { AuthShell, OAuthButtons } from "./AuthLayout";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ApiError } from "../../lib/api";
+import { useAuth } from "../../store/useAuth";
+import { AuthShell, FormError, OAuthButtons } from "./AuthLayout";
+
+/** Turns an API failure into something a student can act on. */
+function loginError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401) return "That email and password don't match. Check them and try again.";
+    if (err.isOffline) return err.message;
+    return err.firstFieldError ?? err.message;
+  }
+  return "Something went wrong on our side. Please try again.";
+}
+
+/**
+ * Optional demo credentials, prefilled so signing in during a demo is one click.
+ *
+ * They come from `VITE_DEMO_EMAIL` / `VITE_DEMO_PASSWORD` in a gitignored `.env.local` rather than
+ * from source, so no password ever enters the repository. Unset in CI and production, which
+ * simply leaves both fields empty.
+ */
+const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? "";
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? "";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("karan@careerpilot.app");
-  const [password, setPassword] = useState("careerpilot123");
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState(DEMO_EMAIL);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
 
-  function submit(e: FormEvent) {
+  /** Where the route guard bounced the user from, so login sends them back there. */
+  const from = (location.state as { from?: string } | null)?.from ?? "/app/dashboard";
+
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (loading) return;
+    setError(null);
     setLoading(true);
-    setTimeout(() => navigate("/app/dashboard"), 900);
+    try {
+      await login(email, password);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(loginError(err));
+      setLoading(false);
+    }
   }
 
   const inputCls =
-    "w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-brand-500/50 focus:bg-white/[0.06] focus:outline-none";
+    "w-full rounded-xl border border-white/10 bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-zinc-100 placeholder:text-zinc-500 transition-colors focus:border-brand-500/50 focus:bg-white/[0.06] focus:outline-none disabled:opacity-60";
 
   return (
     <AuthShell
@@ -33,16 +70,21 @@ export default function Login() {
       }
     >
       <OAuthButtons />
+      <FormError message={error} />
       <form onSubmit={submit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-zinc-300">
+          <label htmlFor="login-email" className="mb-1.5 block text-[13px] font-medium text-zinc-300">
             Email address
           </label>
           <div className="relative">
             <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
             <input
+              id="login-email"
+              name="email"
               type="email"
               required
+              autoComplete="email"
+              disabled={loading}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@college.edu"
@@ -52,7 +94,9 @@ export default function Login() {
         </div>
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-[13px] font-medium text-zinc-300">Password</label>
+            <label htmlFor="login-password" className="text-[13px] font-medium text-zinc-300">
+              Password
+            </label>
             <Link to="/auth/forgot" className="text-[12.5px] font-medium text-brand-300 hover:text-brand-200">
               Forgot password?
             </Link>
@@ -60,8 +104,12 @@ export default function Login() {
           <div className="relative">
             <Lock className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
             <input
+              id="login-password"
+              name="password"
               type={showPw ? "text" : "password"}
               required
+              autoComplete="current-password"
+              disabled={loading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••"
@@ -92,6 +140,14 @@ export default function Login() {
           )}
         </button>
       </form>
+
+      {import.meta.env.DEV && (
+        <p className="mt-6 text-center text-[11.5px] leading-relaxed text-zinc-600">
+          Dev only: demo account <span className="text-zinc-400">{DEMO_EMAIL}</span> /{" "}
+          <span className="text-zinc-400">{DEMO_PASSWORD}</span> — prefilled above, so just hit Log
+          in. Register a new account any time.
+        </p>
+      )}
     </AuthShell>
   );
 }
